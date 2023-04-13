@@ -72,6 +72,10 @@ class GanttChart :
     def get_tasks(self, _data, _color):
         tasks = []
         codes = []
+        
+        start_date = pd.Timestamp(datetime.datetime.today())
+        end_date = pd.Timestamp(datetime.datetime.today())
+
         try:
             for item in _data.iterrows():
                 codes.append(item[1]['id'])
@@ -83,14 +87,21 @@ class GanttChart :
                     percent_done=item[1]['pct_progress'], \
                     color=_color, \
                     resources=[gantt.Resource(item[1]['external_owner'])] ))
+
+
+                start_date = pd.Timestamp(item[1]['start_date']) if pd.Timestamp(item[1]['start_date']) < start_date \
+                    else start_date
+                end_date = pd.Timestamp(item[1]['accomplished']) if pd.Timestamp(item[1]['accomplished']) > end_date \
+                    else end_date
+                
         except KeyError:
             raise Exception('An keyerror type occurs')
         finally:
             print(f"Tasks to {item[1]['source']} processed ok")
             
         result = self.process_dependencies(list(zip(codes, tasks)))
-        return result
-        
+        return start_date, end_date, result
+
     # Process all dependencies (depends_of) from a tasks set
     def process_dependencies(self, _tasks:list):
         result = []
@@ -125,7 +136,7 @@ class GanttChart :
     
     def build_chart(self):
 
-        gantt.define_font_attributes(fill='black', stroke='black', stroke_width=0, font_family="Carlito")
+        gantt.define_font_attributes(fill='black', stroke='black', stroke_width=0, font_family="Verdana")
 
         # Add holidays
         for day in list(self.data_holidays.Day):
@@ -143,7 +154,7 @@ class GanttChart :
             export_filename = self.get_chart_filename(_name)
             data_source = self.data.loc[(self.data.source == _name)]
             color = random.choice(self.colors)
-            tasks = self.get_tasks(data_source, color)
+            start_date, end_date, tasks = self.get_tasks(data_source, color)
             
             # Create a project
             try:
@@ -154,9 +165,14 @@ class GanttChart :
                 raise Exception('An error processing task')
             finally:
                 print(f'All tasks from {source} where processed and added to new project')
+                print(f"Start date: {start_date}, {type(start_date)}")
+                print(f"End date: {end_date}")
 
             projects.append(proj)
-            proj.make_svg_for_tasks(filename=f'./gantts/{export_filename}')
+            proj.make_svg_for_tasks(filename=f'./gantts/{export_filename}', \
+                start=start_date, \
+                today=datetime.datetime.today(), \
+                end=end_date)
 
         full = gantt.Project(name=self.main_project_name)
         for prj in projects:
