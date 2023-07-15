@@ -1,6 +1,7 @@
 from ganttchart import GanttChart
 
-mygantt = GanttChart('conectividade_2023.xlsx', 'CONECTIVIDADE')
+file, title = './project_example_source.xlsx', 'Project Example'
+mygantt = GanttChart(file, title)
 mygantt.load_data_and_holidays()
 
 # test ok
